@@ -1,7 +1,0 @@
-{
-    "env": {
-        "MONGO_USER": "shashibhagat",
-        "MONGO_PASSWORD": "Areuinsane1",
-        "MONGO_DB": "graphql-maxi-tutorial"
-    }
-}
