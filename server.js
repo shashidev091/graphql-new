@@ -24,7 +24,7 @@ app.use('/graphql', graphqlHTTP({
         type User {
             _id: ID!
             email: String!
-            password: String!
+            password: String
         }
 
         input EventInput {
@@ -87,8 +87,12 @@ app.use('/graphql', graphqlHTTP({
         },
 
         createUser: args => {
-            return bcrypt.hash(args.userInput.password, 12)
-            .then(hashedPassword => {
+            return User.findOne({ email: args.userInput.email }).then(user => {
+                if(user) {
+                    throw new Error('User exists already')
+                } 
+                return bcrypt.hash(args.userInput.password, 12)
+            }).then(hashedPassword => {
                 const user = new User({
                     email: args.userInput.email,
                     password: hashedPassword
@@ -96,11 +100,11 @@ app.use('/graphql', graphqlHTTP({
                 return user.save();
             })
             .then(result => {
-                return {...result._doc}
+                return {...result._doc, password: null}
             })
             .catch(err => {
                 throw err;
-            })
+            })  
         },
         getAllUsers: () => {
             return User.find().then(users => {
