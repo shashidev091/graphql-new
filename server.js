@@ -2,10 +2,12 @@ const express = require('express');
 const { graphqlHTTP } = require('express-graphql');
 const { buildSchema } = require('graphql');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 
 const Event = require('./models/event');
+const User = require('./models/user');
 
 app.use(express.json());
 
@@ -19,6 +21,12 @@ app.use('/graphql', graphqlHTTP({
             date: String!
         }
 
+        type User {
+            _id: ID!
+            email: String!
+            password: String!
+        }
+
         input EventInput {
             title: String!
             description: String!
@@ -26,13 +34,20 @@ app.use('/graphql', graphqlHTTP({
             date: String!
         }
 
+        input UserInput {
+            email: String!
+            password: String!
+        }
+
         type RootQuery {
-            events: [Event!]! 
+            events: [Event!]!
+            getAllUsers: [User!]!
         }
 
         type RootMutation {
-            createEvents(eventInput: EventInput): Event
-        }
+            createEvent(eventInput: EventInput): Event
+            createUser(userInput: UserInput): User
+        } 
 
         schema {
             query: RootQuery
@@ -42,9 +57,13 @@ app.use('/graphql', graphqlHTTP({
     `),
     rootValue: {
         events: () => {
-            return events;
+            return Event.find().then(result => {
+                return result.map(event => {
+                    return {...event._doc}
+                })
+            })
         },
-        createEvents: (args) => {
+        createEvent: (args) => {
             // const event = {
             //     _id: Math.random().toString,
             //     title: args.eventInput.title,
@@ -60,13 +79,35 @@ app.use('/graphql', graphqlHTTP({
                 date: new Date(args.eventInput.date)
             })
             return event.save().then(result => {
-                console.log(result);
                 return {...result._doc};
             }).catch(err => {
-                console.log(err);
+                // console.log(err);
                 throw err;
             })
-            return event;
+        },
+
+        createUser: args => {
+            return bcrypt.hash(args.userInput.password, 12)
+            .then(hashedPassword => {
+                const user = new User({
+                    email: args.userInput.email,
+                    password: hashedPassword
+                });
+                return user.save();
+            })
+            .then(result => {
+                return {...result._doc}
+            })
+            .catch(err => {
+                throw err;
+            })
+        },
+        getAllUsers: () => {
+            return User.find().then(users => {
+                return users.map(user => {
+                    return {...user._doc}
+                })
+            })
         }
     },
     graphiql: true
